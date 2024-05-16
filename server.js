@@ -1,6 +1,8 @@
 const express=require('express');
 const app=express();
 const morgan=require('morgan');
+// const winston=require('winston');
+const helmet=require('helmet');
 const session = require('express-session');
 const passport = require('passport');
 const passportGithub = require('./middlewares/passportStrategy');
@@ -20,9 +22,32 @@ const stripeRoute = require('./routes/stripeRoute');
 // use middleware
 app.use(express.json());
 app.use(express.urlencoded({extended:true}));
-app.use(morgan('common'));
+app.use(helmet());
+const {createLogger,transports,format}=require('winston');
+const logger=createLogger({
+    transports:[
+        new transports.File({
+            filename:'combined.log',
+            level:'info',
+            format:format.combine(format.timestamp(),format.json())
+        }),
+        new transports.File({
+            filename:'error.log',
+            level:'error',
+            format:format.combine(format.timestamp(),format.json())
+        })
+    ]
+
+})
+logger.stream = {
+    write:function(message){
+        logger.info(message);
+    }
+}
+app.use(morgan('combined',{stream:logger.stream}));
+
 app.use(session({
-     secret: process.env.SESSION_SECRET,
+        secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: true,
 }));
@@ -58,3 +83,7 @@ app.listen(PORT,()=>{
     console.log(`server is running on port ${PORT}`)
     dbConnection();
 })
+
+
+
+// 
